@@ -1,0 +1,16 @@
+Name:         irmin-datatypes
+Version:      0.1
+Synopsis:     A collection of irmin datatypes
+Authors:      KC Sivaramakrishnan
+License:      ISC
+BuildTools:   ocamlbuild
+OASISFormat:  0.4
+Plugins:      META (0.4), DevFiles (0.4)
+
+
+Library "irmin-datatypes"
+  Path:             lib/
+  Findlibname:      irmin_datatypes
+  InternalModules:  Lww
+  Modules:          Irmin_datatypes
+  BuildDepends:     lwt, irmin, tc
