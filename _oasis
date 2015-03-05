@@ -14,9 +14,9 @@ Flag examples
 Library "irmin-datatypes"
   Path:             lib/
   Findlibname:      irmin_datatypes
-  InternalModules:  Lww_register
+  InternalModules:  Lww_register, Merge_queue
   Modules:          Irmin_datatypes
-  BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core
+  BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core, comparelib.syntax
   ByteOpt:          -thread
   NativeOpt:        -thread
 
@@ -27,5 +27,15 @@ Executable "lww_test"
   CompiledObject:   best
   Install:          false
   BuildDepends:     irmin, irmin_datatypes, irmin.unix, core
+  ByteOpt:          -thread
+  NativeOpt:        -thread
+
+Executable "queue_test"
+  Path:             examples
+  MainIs:           queue_test.ml
+  Build$:           flag(examples)
+  CompiledObject:   best
+  Install:          false
+  BuildDepends:     irmin_datatypes, irmin.unix, alcotest
   ByteOpt:          -thread
   NativeOpt:        -thread

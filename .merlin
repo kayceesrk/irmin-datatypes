@@ -8,3 +8,5 @@ PKG irmin
 PKG lwt
 PKG tc
 PKG core
+PKG git
+PKG alcotest
