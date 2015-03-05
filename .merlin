@@ -1,0 +1,10 @@
+S lib
+S examples
+
+B _build/lib
+B _build/examples
+
+PKG irmin
+PKG lwt
+PKG tc
+PKG core

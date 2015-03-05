@@ -7,10 +7,25 @@ BuildTools:   ocamlbuild
 OASISFormat:  0.4
 Plugins:      META (0.4), DevFiles (0.4)
 
+Flag examples
+  Description: build the examples
+  Default: false
 
 Library "irmin-datatypes"
   Path:             lib/
   Findlibname:      irmin_datatypes
-  InternalModules:  Lww
+  InternalModules:  Lww_register
   Modules:          Irmin_datatypes
-  BuildDepends:     lwt, irmin, tc
+  BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core
+  ByteOpt:          -thread
+  NativeOpt:        -thread
+
+Executable "lww_test"
+  Path:             examples/
+  MainIs:           lww_test.ml
+  Build$:           flag(examples)
+  CompiledObject:   best
+  Install:          false
+  BuildDepends:     irmin, irmin_datatypes, irmin.unix, core
+  ByteOpt:          -thread
+  NativeOpt:        -thread

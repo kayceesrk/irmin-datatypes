@@ -1,0 +1,6 @@
+*~
+_build
+*.cmt
+*.swp
+*.log
+*.native
