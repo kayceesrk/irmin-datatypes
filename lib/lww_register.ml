@@ -29,12 +29,15 @@ end
 module Path = Irmin.Path.String_list
 include Tc.Pair (Time)(Tc.Int)
 
-let compare (x,_) (y,_) = Pervasives.compare x y
+let compare (x,u) (y,v) =
+  let r = Pervasives.compare x y in
+  if r == 0 then Pervasives.compare u v
+  else r
 
 let new_value value = (Time.now (), value)
 
 let merge _path ~old t1 t2 =
   let open Irmin.Merge.OP in
-  if compare t1 t2 < 0 then ok t1 else ok t2
+  if compare t1 t2 < 0 then ok t2 else ok t1
 
 let merge path = Irmin.Merge.option (module Tc.Pair(Time)(Tc.Int)) (merge path)
