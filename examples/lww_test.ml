@@ -1,29 +1,32 @@
 (* Testing LWW Register *)
 
-open Lwt
-open Irmin_unix
+open Printf
 open Irmin_datatypes
-open Core
 
-let key = [ "local"; "register1" ]
+let (>>=) = Lwt.bind
 
-let read t = Irmin.read (t "Reading the register") key
+module Git = Irmin_git.RW(Git.Memory)
+module Config = struct
+  let conf = Irmin_git.config ()
+  let task = Irmin_unix.task
+end
 
-let write t v =
-  let reg_val = Lww_register.Int.new_value v in
-  Irmin.update (t "Updating the register") key reg_val
+module HashInt = struct
+  include Tc.Int
+  let to_raw = Tc.write_cstruct (module Tc.Int)
+  let of_raw = Tc.read_cstruct (module Tc.Int)
+  let of_hum = int_of_string
+  let to_hum = string_of_int
+  let has_kind _ = false
+  let digest = of_raw
+end
 
-let main () =
-  let store = Irmin.basic (module Irmin_git.FS) (module Lww_register.Int) in
-  let config = Irmin_git.config ~root:"/tmp/irmin/test" ~bare:true()  in
-  Irmin.create store config task >>= fun t ->
-    write t 10 >>= fun () ->
-    read t >>= function
-      | None -> return_unit
-      | Some (t,v) ->
-          print_string @@ Time.to_string t;
-          print_string " ";
-          print_string @@ string_of_int v;
-          return_unit
+module Path = Irmin.Path.String_list
+module Lww = Lww_register.Make(Git)(HashInt)(HashInt)(Path)(Config)
 
-let _ = Lwt_main.run @@ main ()
+let main =
+  Lww.update 0 10
+  >>= fun _ -> Lww.read_exn 0
+  >>= fun i -> print_int i; Lwt.return ()
+
+let () = Lwt_main.run main
