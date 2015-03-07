@@ -34,14 +34,14 @@ module type S = sig
   type value
   (** The type of value stored in the register *)
 
+  val create : value -> t Lwt.t
+  (** Create a new register with the given value *)
+
   val read : t -> value option Lwt.t
   (** Read the register. Return [None] if the register does not exist *)
 
   val read_exn : t -> value Lwt.t
   (** Read the register. Raise [TODO: Which?] exception if the register does not exist *)
-
-  val update : t -> value -> unit Lwt.t
-  (** Update the register value *)
 
   val stats : unit -> stats
   (** Obtain global statistics on register operations *)
@@ -53,11 +53,10 @@ module type Config = sig
 end
 
 module Make
-   (RW: Irmin.RW_MAKER)
-   (K: Irmin.Hum.S)
-   (V: Irmin.Hash.S)
+   (AO: Irmin.AO_MAKER)
+   (K: Irmin.Hash.S)
+   (V: Tc.S0)
    (P: Irmin.Path.S)
    (C: Config)
  : S with type value = V.t
-      and type t = K.t
       and module Path = P

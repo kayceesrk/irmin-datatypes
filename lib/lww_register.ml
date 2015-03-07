@@ -21,7 +21,7 @@ open Core
 open Core.Std
 open Irmin.Merge.OP
 
-module Log = Log.Make(struct let section = "QUEUE" end)
+module Log = Log.Make(struct let section = "LWW_REGISTER" end)
 
 type stats = {
   ops: int;
@@ -52,9 +52,9 @@ end
 module type S = sig
   include Irmin.Contents.S
   type value
+  val create   : value -> t Lwt.t
   val read     : t -> value option Lwt.t
   val read_exn : t -> value Lwt.t
-  val update   : t -> value -> unit Lwt.t
   val stats    : unit -> stats
 end
 
@@ -64,9 +64,9 @@ module type Config = sig
 end
 
 module Make
-  (RW: Irmin.RW_MAKER)
-  (K: Irmin.Hum.S)
-  (V: Irmin.Hash.S)
+  (AO: Irmin.AO_MAKER)
+  (K: Irmin.Hash.S)
+  (V: Tc.S0)
   (P: Irmin.Path.S)
   (Config: Config)
 = struct
@@ -83,22 +83,8 @@ module Make
       let r = Time.compare x y in
       if r = 0 then V.compare u v else r
 
-    let to_hum (t,v) =
-      String.concat ["("; Time.to_string t; ", ";
-                     V.to_hum v; ")"]
-
-    let of_hum s =
-      let re = Re_pcre.regexp "\\((.*),(.*)\\)" in
-      let arr = Re_pcre.extract re s in
-      (Time.of_string @@ arr.(0), V.of_hum @@ arr.(1))
-
     let to_raw v = Tc.write_cstruct (module M) v
     let of_raw cs = Tc.read_cstruct (module M) cs
-
-    (* KC: Is this right? *)
-    let digest = of_raw
-    (* KC: Is this right? *)
-    let has_kind _ = false
   end
 
   let (incr_read, incr_write, get_read, get_write) =
@@ -112,15 +98,15 @@ module Make
     )
 
   module Store = struct
-    module S = RW(K)(C)
+    module S = AO(K)(C)
 
     include S
 
     let create () = create Config.conf Config.task
+    let add t v = incr_write (); S.add t v
     let read t k = incr_read (); S.read t k
     let read_exn t k = incr_read (); S.read_exn t k
     let read_free t k = S.read_exn t k
-    let update t k v = incr_write (); S.update t k v
   end
 
   type lww_reg = K.t
@@ -135,9 +121,9 @@ module Make
 
   type value = V.t
 
-  let update key value =
-    Store.create () >>= fun store ->
-      Store.update (store "update") key @@ C.new_value value
+  let create value =
+    Store.create ()
+    >>= fun store -> Store.add (store "update") @@ C.new_value value
 
   let read key =
     Store.create ()
@@ -146,7 +132,6 @@ module Make
         | None -> return None
         | Some (_,value) -> return (Some value)
 
-
   let read_exn key =
     Store.create ()
     >>= fun store -> Store.read_exn (store "read_exn") key
@@ -154,8 +139,10 @@ module Make
 
   let merge : Path.t -> t option Irmin.Merge.t =
     let merge ~old r1 r2 =
-      if K.compare r1 r2 > 0 then ok r1
-      else ok r2
+      Store.create ()
+      >>= fun store -> Store.read_free (store "read_free") r1
+      >>= fun (t1,_) -> Store.read_free (store "read_free") r2
+      >>= fun (t2,_) -> if Time.compare t1 t2 > 0 then ok r1 else ok r2
     in fun _path -> Irmin.Merge.option (module T) merge
 
   let stats () =

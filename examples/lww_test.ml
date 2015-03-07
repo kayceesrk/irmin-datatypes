@@ -5,28 +5,18 @@ open Irmin_datatypes
 
 let (>>=) = Lwt.bind
 
-module Git = Irmin_git.RW(Git.Memory)
+module Git = Irmin_git.AO(Git.Memory)
 module Config = struct
   let conf = Irmin_git.config ()
   let task = Irmin_unix.task
 end
 
-module HashInt = struct
-  include Tc.Int
-  let to_raw = Tc.write_cstruct (module Tc.Int)
-  let of_raw = Tc.read_cstruct (module Tc.Int)
-  let of_hum = int_of_string
-  let to_hum = string_of_int
-  let has_kind _ = false
-  let digest = of_raw
-end
-
 module Path = Irmin.Path.String_list
-module Lww = Lww_register.Make(Git)(HashInt)(HashInt)(Path)(Config)
+module Lww = Lww_register.Make(Git)(Irmin.Hash.SHA1)(Tc.Int)(Path)(Config)
 
 let main =
-  Lww.update 0 10
-  >>= fun _ -> Lww.read_exn 0
-  >>= fun i -> print_int i; Lwt.return ()
-
+  Lww.create 10
+  >>= fun k1 -> Lww.read_exn k1
+  >>= fun v -> printf "read value: %d\n" v;
+               Lwt.return ()
 let () = Lwt_main.run main
