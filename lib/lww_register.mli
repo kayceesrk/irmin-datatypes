@@ -32,7 +32,7 @@ module type S = sig
   (** The type of LWW registers. *)
 
   type key
-  (* The type of key in the target store *)
+  (** The type of key in the target store. *)
 
   type value
   (** The type of value stored in the register *)
