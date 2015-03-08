@@ -49,33 +49,35 @@ module Time = struct
   include (Time : TIME with type t := t)
 end
 
-module type S = sig
-  include Irmin.Contents.S
-  type value
-  val create   : value -> t Lwt.t
-  val read     : t -> value option Lwt.t
-  val read_exn : t -> value Lwt.t
-  val stats    : unit -> stats
-end
-
 module type Config = sig
   val conf : Irmin.config
   val task: string -> Irmin.task
 end
 
+module type S = sig
+  type t
+  type key
+  type value
+  module Contents : Irmin.Contents.S
+  type 'a store = string -> ('a, key, Contents.t) Irmin.t
+  val create : key -> t
+  val read : [<`RO|`HRW|`BC] store -> t -> value option Lwt.t
+  val read_exn : [<`RO|`HRW|`BC] store -> t -> value Lwt.t
+  val update : [<`HRW|`BC] store -> t -> value -> unit Lwt.t
+  val stats : unit -> stats
+end
+
 module Make
-  (AO: Irmin.AO_MAKER)
-  (K: Irmin.Hash.S)
+  (K: sig type t end)
   (V: Tc.S0)
   (P: Irmin.Path.S)
-  (Config: Config)
 = struct
 
-  module Path = P
-
-  module C = struct
+  module Contents = struct
     module M = Tc.Pair (Time)(V)
     include M
+
+    module Path = P
 
     let new_value value = (Time.now(), value)
 
@@ -85,6 +87,11 @@ module Make
 
     let to_raw v = Tc.write_cstruct (module M) v
     let of_raw cs = Tc.read_cstruct (module M) cs
+
+    let merge : Path.t -> t option Irmin.Merge.t =
+      let merge ~old ((t1,_) as v1) ((t2,_) as v2) =
+        if Time.compare t1 t2 > 0 then ok v1 else ok v2
+      in fun _path -> Irmin.Merge.option (module M) merge
   end
 
   let (incr_read, incr_write, get_read, get_write) =
@@ -97,57 +104,28 @@ module Make
       (fun () -> !count_write)
     )
 
-  module Store = struct
-    module S = AO(K)(C)
-
-    include S
-
-    let create () = create Config.conf Config.task
-    let add t v = incr_write (); S.add t v
-    let read t k = incr_read (); S.read t k
-    let read_exn t k = incr_read (); S.read_exn t k
-    let read_free t k = S.read_exn t k
-  end
-
-  type lww_reg = K.t
-
-  module T = Tc.Biject (K)
-    (struct
-      type t = lww_reg
-      let to_t v = v
-      let of_t v = v
-    end)
-  include T
-
+  type t = K.t
+  type key = K.t
   type value = V.t
+  type 'a store = string -> ('a, key, Contents.t) Irmin.t
 
-  let create value =
-    Store.create ()
-    >>= fun store -> Store.add (store "update") @@ C.new_value value
-
-  let read key =
-    Store.create ()
-    >>= fun store -> Store.read (store "read") key
+  let read store reg =
+    Irmin.read (store "read") reg
     >>= function
         | None -> return None
         | Some (_,value) -> return (Some value)
 
-  let read_exn key =
-    Store.create ()
-    >>= fun store -> Store.read_exn (store "read_exn") key
+  let read_exn store reg =
+    Irmin.read_exn (store "read_exn") reg
     >>= fun (_, value) -> return value
 
-  let merge : Path.t -> t option Irmin.Merge.t =
-    let merge ~old r1 r2 =
-      Store.create ()
-      >>= fun store -> Store.read_free (store "read_free") r1
-      >>= fun (t1,_) -> Store.read_free (store "read_free") r2
-      >>= fun (t2,_) -> if Time.compare t1 t2 > 0 then ok r1 else ok r2
-    in fun _path -> Irmin.Merge.option (module T) merge
+  let update store reg value =
+    Irmin.update (store "update") reg @@ Contents.new_value value
 
   let stats () =
     let reads = get_read () in
     let writes = get_write () in
     { ops = reads + writes; reads; writes }
 
+  let create k = k
 end
