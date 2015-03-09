@@ -28,31 +28,19 @@ val string_of_stats: stats -> string
 
 module type S = sig
 
-  type t
-  (** The type of LWW registers. *)
-
-  type key
-  (** The type of key in the target store. *)
+  include Irmin.Contents.S
+  (** The type of LWW register. *)
 
   type value
-  (** The type of value stored in the register *)
+  (** The type of value stored in the LWW register. *)
 
-  module Contents : Irmin.Contents.S
-  (** The type of contents internally stored in the register. *)
-
-  type 'a store = string -> ('a, key, Contents.t) Irmin.t
-  (** Type alias for convenience. *)
-
-  val create : key -> t
+  val create : value -> t Lwt.t
   (** Create a new register with the given key. *)
 
-  val read : [<`RO|`HRW|`BC] store -> t -> value option Lwt.t
-  (** Read the register. Return [None] if the register does not exist *)
+  val read_reg : t -> value Lwt.t
+  (** Read the register. *)
 
-  val read_exn : [<`RO|`HRW|`BC] store -> t -> value Lwt.t
-  (** Read the register. Raise [TODO: Which?] exception if the register does not exist. *)
-
-  val update : [<`HRW|`BC] store -> t -> value -> unit Lwt.t
+  val update : t -> value -> t Lwt.t
   (** Update the value of register. *)
 
   val stats : unit -> stats
@@ -65,9 +53,7 @@ module type Config = sig
 end
 
 module Make
-   (K: sig type t end)
    (V: Tc.S0)
    (P: Irmin.Path.S)
  : S with type value = V.t
-      and type key = K.t
-      and module Contents.Path = P
+      and module Path = P

@@ -39,3 +39,13 @@ Executable "queue_test"
   BuildDepends:     irmin_datatypes, irmin.unix, alcotest
   ByteOpt:          -thread
   NativeOpt:        -thread
+
+Executable "queue_test2"
+  Path:             examples
+  MainIs:           queue_test2.ml
+  Build$:           flag(examples)
+  CompiledObject:   best
+  Install:          false
+  BuildDepends:     irmin_datatypes, irmin.unix
+  ByteOpt:          -thread
+  NativeOpt:        -thread
