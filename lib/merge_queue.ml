@@ -664,6 +664,7 @@ module Make
         else clean old q2 >>= fun q2 -> return (q1, q2))
     in
 
+
     let merge ~old q1 q2 =
       old () >>= function  (* FIXME *)
       | `Conflict _ | `Ok None -> conflict "merge"

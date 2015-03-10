@@ -14,7 +14,7 @@ Flag examples
 Library "irmin-datatypes"
   Path:             lib/
   Findlibname:      irmin_datatypes
-  InternalModules:  Lww_register, Merge_queue
+  InternalModules:  Lww_register, Merge_queue, Builder
   Modules:          Irmin_datatypes
   BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core, comparelib.syntax, re.pcre
   ByteOpt:          -thread
