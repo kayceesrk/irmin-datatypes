@@ -1,6 +1,5 @@
 (*
- * Copyright (c) 2014 Benjamin Farinier <benjamin.farinier@ens-lyon.fr>
- * Copyright (c) 2014 Thomas Gazagnaire <thomas@gazagnaire.org>
+ * Copyright (c) 2015 KC Sivaramakrishnan <sk826@cl.cam.ac.uk>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
