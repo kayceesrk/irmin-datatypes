@@ -1,29 +1,26 @@
 open Lwt
 open Irmin.Merge.OP
 
-module type ABELIAN = sig
+module type DIFF = sig
   include Tc.S0
-  (** The type of abelian group. *)
-
-  val zero : t
-  (** Zero element of the group. *)
-
-  val (+:) : t -> t -> t
-  (** Addition operation for the group. *)
-
-  val (-:) : t -> t -> t
-  (** Difference operation for the group. *)
+  type diff
+  val patch : diff -> t -> t Lwt.t
+  val diff : t -> t -> diff Lwt.t
 end
 
-module Make (A: ABELIAN) (P: Irmin.Path.S) = struct
-  include A
-
+module Make (D: DIFF) (P: Irmin.Path.S) = struct
+  include D
   module Path = P
 
   let merge: Path.t -> t option Irmin.Merge.t =
     let merge ~old v1 v2 =
       old () >>= function
       | `Conflict _ | `Ok None -> conflict "merge"
-      | `Ok (Some old) -> ok @@ old +: (v1 -: old) +: (v2 -: old)
-    in fun _path -> Irmin.Merge.option (module A) merge
+      | `Ok (Some old) ->
+          diff v1 old >>= fun d1 ->
+          diff v2 old >>= fun d2 ->
+          patch d1 old >>= fun res1 ->
+          patch d2 res1 >>= fun res ->
+          ok res
+    in fun _path -> Irmin.Merge.option (module D) merge
 end

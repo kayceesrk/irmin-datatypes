@@ -1,18 +1,20 @@
-module type ABELIAN = sig
+module type DIFF = sig
   include Tc.S0
-  (** The type of abelian group. *)
+  (** The type of base. *)
 
-  val zero : t
-  (** Zero element of the group. *)
+  type diff
+  (** The type of diff. *)
 
-  val (+:) : t -> t -> t
-  (** Addition operation for the group. *)
+  val patch : diff -> t -> t Lwt.t
+  (** Apply a patch. Patch must always be accepted. *)
 
-  val (-:) : t -> t -> t
-  (** Difference operation for the group. *)
+  val diff : t -> t -> diff Lwt.t
+  (** Obtain a diff between two versions. *)
 end
 
 module Make
-  (A: ABELIAN)
+  (D: DIFF)
   (P: Irmin.Path.S)
  : Irmin.Contents.S
+   with type t = D.t
+    and module Path = P
