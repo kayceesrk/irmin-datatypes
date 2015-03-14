@@ -33,10 +33,8 @@ module Make (D: DIFF) (P: Irmin.Path.S) = struct
       old () >>= function
       | `Conflict _ | `Ok None -> conflict "merge"
       | `Ok (Some old) ->
-          diff v1 old >>= fun d1 ->
           diff v2 old >>= fun d2 ->
-          patch d1 old >>= fun res1 ->
-          patch d2 res1 >>= fun res ->
+          patch d2 v1 >>= fun res ->
           ok res
     in fun _path -> Irmin.Merge.option (module D) merge
 end

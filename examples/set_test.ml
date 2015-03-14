@@ -29,7 +29,7 @@ module Config = struct
   let task = task
 end
 module Path = Irmin.Path.String_list
-module Set = Merge_set.Make(Git)(Irmin.Hash.SHA1)(Tc.Int)(Path)(Config)
+module Set = Merge_blob_set.Make(Git)(Irmin.Hash.SHA1)(Tc.Int)(Path)(Config)
 
 let key = ["local"; "set"]
 
