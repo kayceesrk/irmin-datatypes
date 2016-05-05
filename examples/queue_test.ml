@@ -20,13 +20,21 @@ open Irmin_datatypes
 
 let (>>=) = Lwt.bind
 
-module Git = Irmin_git.AO(Git.Memory)
+
 module Config = struct
   let conf = Irmin_git.config ()
   let task = Irmin_unix.task
 end
 module Path = Irmin.Path.String_list
-module Queue = Merge_queue.Make(Git)(Irmin.Hash.SHA1)(Tc.Int)(Path)(Config)
+
+module Queue = Merge_queue.Make(Irmin_mem.AO)(Irmin.Hash.SHA1)(Tc.Int)(Path)(Config)
+
+let assert_failure s =
+  Printf.fprintf stderr "%s\n%!" s;
+  assert false
+
+let assert_bool s b =
+  if not b then assert_failure s
 
 type choice =
   | Top
@@ -60,7 +68,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     | None, None -> (
         Queue.is_empty q1 >>= fun b1 ->
         Queue.is_empty q2 >>= fun b2 ->
-        OUnit.assert_bool "prepare_old_merge" (b1 && b2);
+        assert_bool "prepare_old_merge" (b1 && b2);
         Lwt.return ()
       )
     | None, Some (a_merge, q_merge') -> (
@@ -84,7 +92,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     | None, None -> (
         Queue.is_empty q1 >>= fun b1 ->
         Queue.is_empty q2 >>= fun b2 ->
-        OUnit.assert_bool "prepare_old_merge_continue" (b1 && b2);
+        assert_bool "prepare_old_merge_continue" (b1 && b2);
         Lwt.return ()
       )
     | None, Some (a_merge, q_merge') -> (
@@ -108,7 +116,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt_old, opt1, opt2) with
     | None, None, None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q1_q2 (1)" b;
+        assert_bool "prepare_old_q1_q2 (1)" b;
         Lwt.return ()
       )
     | None, None, Some (a2, q2') -> (
@@ -122,7 +130,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
       )
     | Some (a_old, q_old'), None, None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q1_q2 (2)" b;
+        assert_bool "prepare_old_q1_q2 (2)" b;
         Lwt.return ()
       )
     | Some (a_old, q_old'), None, Some (a2, q2') -> (
@@ -152,7 +160,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt_old, opt1) with
     | None, None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q1 (1)" b;
+        assert_bool "prepare_old_q1 (1)" b;
         Lwt.return ()
       )
     | None, Some (a1, q1') -> (
@@ -160,11 +168,11 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
       )
     | Some (a_old, q_old'), None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q1 (2)" b;
+        assert_bool "prepare_old_q1 (2)" b;
         Lwt.return ()
       )
     | Some (a_old, q_old'), Some (a1, q1') -> (
-        OUnit.assert_bool "prepare_old_q1 (3)" (a_old = a1);
+        assert_bool "prepare_old_q1 (3)" (a_old = a1);
         prepare_old_q1 q_old' q1' q2 q_merge
       )
 
@@ -175,7 +183,7 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt_old, opt2) with
     | None, None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q2 (1)" b;
+        assert_bool "prepare_old_q2 (1)" b;
         Lwt.return ()
       )
     | None, Some (a2, q2') -> (
@@ -183,11 +191,11 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
       )
     | Some (a_old, q_old'), None -> (
         Queue.is_empty q_merge >>= fun b ->
-        OUnit.assert_bool "prepare_old_q2 (2)" b;
+        assert_bool "prepare_old_q2 (2)" b;
         Lwt.return ()
       )
     | Some (a_old, q_old'), Some (a2, q2') -> (
-        OUnit.assert_bool "prepare_old_q2 (3)" (a_old = a2);
+        assert_bool "prepare_old_q2 (3)" (a_old = a2);
         prepare_old_q2 q_old' q1 q2' q_merge
       )
 
@@ -199,21 +207,21 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt1, opt2, opt_merge) with
     | None, None, None -> Lwt.return ()
     | None, None, Some (a_merge, q_merge') ->
-      OUnit.assert_failure "compare_q1_q2_merge (1)"
+      assert_failure "compare_q1_q2_merge (1)"
     | None, Some (a2, q2'), None ->
-      OUnit.assert_failure "compare_q1_q2_merge (2)"
+      assert_failure "compare_q1_q2_merge (2)"
     | None, Some (a2, q2'), Some (a_merge, q_merge') ->
-      OUnit.assert_bool "compare_q1_q2_merge (3)" (a2 = a_merge);
+      assert_bool "compare_q1_q2_merge (3)" (a2 = a_merge);
       compare_q2_merge q2' q_merge'
     | Some (a1, q1'), None, None ->
-      OUnit.assert_failure "compare_q1_q2_merge (4)"
+      assert_failure "compare_q1_q2_merge (4)"
     | Some (a1, q1'), None, Some (a_merge, q_merge') ->
-      OUnit.assert_bool "compare_q1_q2_merge" (a1 = a_merge);
+      assert_bool "compare_q1_q2_merge" (a1 = a_merge);
       compare_q1_merge q1' q_merge'
     | Some (a1, q1'), Some (a2, q2'), None ->
-      OUnit.assert_failure "compare_q1_q2_merge (5)"
+      assert_failure "compare_q1_q2_merge (5)"
     | Some (a1, q1'), Some (a2, q2'), Some (a_merge, q_merge') ->
-      OUnit.assert_bool "compare_q1_q2_merge" (a1 = a_merge);
+      assert_bool "compare_q1_q2_merge" (a1 = a_merge);
       compare_q1_q2_merge q1' q2 q_merge'
 
   and compare_q1_merge q1 q_merge =
@@ -223,11 +231,11 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt1, opt_merge) with
     | None, None -> Lwt.return ()
     | None, Some (a_merge, q_merge') ->
-      OUnit.assert_failure "compare_q1_merge (1)"
+      assert_failure "compare_q1_merge (1)"
     | Some (a1, q1'), None ->
-      OUnit.assert_failure "compare_q1_merge (2)"
+      assert_failure "compare_q1_merge (2)"
     | Some (a1, q1'), Some (a_merge, q_merge') ->
-      OUnit.assert_bool "compare_q1_merge (3)" (a1 = a_merge);
+      assert_bool "compare_q1_merge (3)" (a1 = a_merge);
       compare_q1_merge q1' q_merge'
 
   and compare_q2_merge q2 q_merge=
@@ -237,11 +245,11 @@ let assert_queue (q_old:Queue.t) (q1:Queue.t) (q2:Queue.t) (q_merge:Queue.t) =
     match (opt2, opt_merge) with
     | None, None -> Lwt.return ()
     | None, Some (a_merge, q_merge') ->
-      OUnit.assert_failure "compare_q2_merge (1)"
+      assert_failure "compare_q2_merge (1)"
     | Some (a2, q2'), None ->
-      OUnit.assert_failure "compare_q2_merge (2)"
+      assert_failure "compare_q2_merge (2)"
     | Some (a2, q2'), Some (a_merge, q_merge') ->
-      OUnit.assert_bool "compare_q2_merge" (a2 = a_merge);
+      assert_bool "compare_q2_merge" (a2 = a_merge);
       compare_q2_merge q2' q_merge'
   in
   prepare_old_merge q_old q1 q2 q_merge q_old
@@ -268,8 +276,8 @@ and branching queue lambda mu nu push pop branch depth =
       branching queue lambda mu nu push pop (branch + 1) depth >>= fun q2 ->
       let old () = Lwt.return @@ `Ok (Some (Some queue)) in
       Queue.merge [] ~old (Some q1) (Some q2) >>= function
-      | `Conflict s        -> OUnit.assert_failure s
-      | `Ok None           -> OUnit.assert_failure "branching: none"
+      | `Conflict s        -> assert_failure s
+      | `Ok None           -> assert_failure "branching: none"
       | `Ok Some (merge_q) ->
           assert_queue queue q1 q2 merge_q >>= fun () ->
           Lwt.return merge_q

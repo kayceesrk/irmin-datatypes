@@ -192,7 +192,7 @@ module Make
     include S
 
     let create () =
-      create Config.conf Config.task
+      create Config.conf
 
     let read t k =
       incr_read ();
@@ -244,7 +244,7 @@ module Make
   *)
   let create () =
     Store.create () >>= fun store ->
-    Store.add (store "create") (C.Node empty) >>= fun root ->
+    Store.add store (C.Node empty) >>= fun root ->
     let index = {
       C.push = 0;
       C.pop = 0;
@@ -287,7 +287,7 @@ module Make
            k queue k_old_node k_new_node
          )
        | Some old_next -> (
-           Store.read_exn (store "from_top: read") old_next >>= fun old_next ->
+           Store.read_exn store old_next >>= fun old_next ->
            match old_next with
            | C.Index _
            | C.Elt _ -> fail (Error `Corrupted)
@@ -297,7 +297,7 @@ module Make
       match old_node.C.elt with
       | None -> return new_next
       | Some elt -> (
-          Store.add (store "from_top: add") (C.Node new_next) >>= fun new_key_node ->
+          Store.add store (C.Node new_next) >>= fun new_key_node ->
           let new_node = {
             C.next = Some new_key_node;
             C.previous = None;
@@ -315,12 +315,12 @@ module Make
 
       match old_node.C.branch with
       | Some index -> (
-          Store.read_exn (store "from_bottom: old=index") index.C.top >>= fun branch_top ->
+          Store.read_exn store index.C.top >>= fun branch_top ->
           match branch_top with
           | C.Index _
           | C.Elt _ -> fail (Error `Corrupted)
           | C.Node branch_top ->
-            Store.read_exn (store "from_bottom: old=node")  index.C.bottom >>= fun branch_bottom ->
+            Store.read_exn store index.C.bottom >>= fun branch_bottom ->
             match branch_bottom with
             | C.Index _
             | C.Elt _ ->  fail (Error `Corrupted)
@@ -332,7 +332,7 @@ module Make
               match old_node.C.previous with
               | None -> return new_node
               | Some old_previous -> (
-                  Store.read_exn (store "from_bottom: old=node/previous") old_previous >>= fun old_previous ->
+                  Store.read_exn store old_previous >>= fun old_previous ->
                   match old_previous with
                   | C.Index _
                   | C.Elt _ -> fail (Error `Corrupted)
@@ -346,12 +346,12 @@ module Make
               return new_node;
             )
           | Some old_previous -> (
-              Store.read_exn (store "from_bottom: old=None") old_previous >>= fun old_previous ->
+              Store.read_exn store old_previous >>= fun old_previous ->
               match old_previous with
               | C.Index _
               | C.Elt _ -> fail (Error `Corrupted)
               | C.Node old_previous -> (
-                  Store.add (store "from_bottom: old=None/previous=node") (C.Node new_node) >>= fun key_node ->
+                  Store.add store (C.Node new_node) >>= fun key_node ->
                   let new_previous = {
                     C.next = Some key_node;
                     C.previous = None;
@@ -363,18 +363,18 @@ module Make
         )
     in
 
-    Store.read_exn (store "from_bottom") index.C.top >>= fun top_node ->
+    Store.read_exn store index.C.top >>= fun top_node ->
     match top_node with
     | C.Index _
     | C.Elt _ -> fail (Error `Corrupted)
     | C.Node top_node ->
-      Store.read_exn (store "from_bottom: top=node") index.C.bottom >>= fun bottom_node ->
+      Store.read_exn store index.C.bottom >>= fun bottom_node ->
       match bottom_node with
       | C.Index _
       | C.Elt _ -> fail (Error `Corrupted)
       | C.Node bottom_node ->
         apply from_top from_bottom q top_node bottom_node empty >>= fun node ->
-        Store.add (store "from_bottom: top=node/bottom=node") (C.Node node) >>= fun key_top ->
+        Store.add store (C.Node node) >>= fun key_top ->
         let index = {
           C.push = index.C.push;
           C.pop = index.C.pop;
@@ -393,14 +393,14 @@ module Make
     let index = q.index in
     let root = q.root in
 
-    Store.add (store "push 1") (C.Elt elt) >>= fun key_elt ->
+    Store.add store (C.Elt elt) >>= fun key_elt ->
     let node = {
       C.next = None;
       C.previous = Some index.C.bottom;
       C.elt = Some key_elt;
       C.branch = None;
     } in
-    Store.add (store "push 2") (C.Node node) >>= fun key_node ->
+    Store.add store (C.Node node) >>= fun key_node ->
     let index = {
       C.push = index.C.push + 1;
       C.pop = index.C.pop;
@@ -421,7 +421,7 @@ module Make
       C.elt = None;
       C.branch = Some branch;
     } in
-    Store.add (store "push_branch") (C.Node node) >>= fun key_node ->
+    Store.add store (C.Node node) >>= fun key_node ->
     let index = {
       C.push = index.C.push;
       C.pop = index.C.pop;
@@ -444,7 +444,7 @@ module Make
     if index.C.push = index.C.pop then
       return None
     else
-      Store.read_exn (store "pop 1") index.C.top >>= fun node ->
+      Store.read_exn store  index.C.top >>= fun node ->
       match node with
       | C.Index _
       | C.Elt _ -> fail (Error `Corrupted)
@@ -452,7 +452,7 @@ module Make
         match node.C.elt with
         | None -> normalize q >>= fun q -> pop q
         | Some elt ->
-          Store.read_exn (store "pop 2") elt >>= fun elt ->
+          Store.read_exn store elt >>= fun elt ->
           match elt with
           | C.Index _
           | C.Node _ -> fail (Error `Corrupted)
@@ -483,7 +483,7 @@ module Make
     if index.C.push = index.C.pop then
       fail Empty
     else
-      Store.read_exn (store "pop_exn") index.C.top >>= fun node ->
+      Store.read_exn store index.C.top >>= fun node ->
       match node with
       | C.Index _
       | C.Elt _ -> fail (Error `Corrupted)
@@ -491,7 +491,7 @@ module Make
         match node.C.elt with
         | None -> normalize q >>= fun q -> pop_exn q
         | Some elt ->
-          Store.read_exn (store "pop_exn") elt >>= fun elt ->
+          Store.read_exn store elt >>= fun elt ->
           match elt with
           | C.Index _
           | C.Node _ -> fail (Error `Corrupted)
@@ -520,7 +520,7 @@ module Make
     if index.C.push = index.C.pop then
       return None
     else
-      Store.read_exn (store "peek 1") index.C.top >>= fun node ->
+      Store.read_exn store index.C.top >>= fun node ->
       match node with
       | C.Index _
       | C.Elt _ -> fail (Error `Corrupted)
@@ -528,7 +528,7 @@ module Make
         match node.C.elt with
         | None -> normalize q >>= fun q -> peek q
         | Some elt ->
-          Store.read_exn (store "peek 2") elt >>= fun elt ->
+          Store.read_exn store elt >>= fun elt ->
           match elt with
           | C.Index _
           | C.Node _ -> fail (Error `Corrupted)
@@ -547,7 +547,7 @@ module Make
     if index.C.push = index.C.pop then
       raise Empty
     else
-      Store.read_exn (store "peek_exn 1") index.C.top >>= fun node ->
+      Store.read_exn store index.C.top >>= fun node ->
       match node with
       | C.Index _
       | C.Elt _ -> fail (Error `Corrupted)
@@ -555,7 +555,7 @@ module Make
         match node.C.elt with
         | None -> normalize q >>= fun q -> peek_exn q
         | Some elt ->
-          Store.read_exn (store "peek_exn 2") elt >>= fun elt ->
+          Store.read_exn store elt >>= fun elt ->
           match elt with
           | C.Index _
           | C.Node _ -> fail (Error `Corrupted)
@@ -573,11 +573,11 @@ module Make
           | None -> return (Printf.sprintf (if C.equal_node node empty then "Empty%!"
                                             else "None%!"))
           | Some key ->
-            Store.read_free (store "from_top 1")  key >>= fun elt ->
+            Store.read_free store key >>= fun elt ->
             return (Printf.sprintf "Some %s%!" (C.to_string elt))
         )
       | Some next -> (
-          Store.read_free (store "from_top 2") next >>= fun next ->
+          Store.read_free store next >>= fun next ->
           match next with
           | C.Index _
           | C.Elt _ -> assert false
@@ -586,7 +586,7 @@ module Make
               match node.C.elt with
               | None ->return (Printf.sprintf "None -> %s%!" string)
               | Some elt ->
-                Store.read_free (store "from_top 3") elt >>= fun elt ->
+                Store.read_free store elt >>= fun elt ->
                 return (Printf.sprintf "Some %s -> %s%!" (C.to_string elt) string)
             )
         )
@@ -599,11 +599,11 @@ module Make
           | None -> return (Printf.sprintf (if C.equal_node node empty then "Empty%!"
                                             else "None%!"))
           | Some key ->
-            Store.read_free (store "from_bottom 1")  key >>= fun elt ->
+            Store.read_free store key >>= fun elt ->
             return (Printf.sprintf "Some %s%!" (C.to_string elt))
         )
       | Some previous -> (
-          Store.read_free (store "from_bottom 2") previous >>= fun previous ->
+          Store.read_free store previous >>= fun previous ->
           match previous with
           | C.Index _
           | C.Elt _ -> assert false
@@ -612,19 +612,19 @@ module Make
               match node.C.elt with
               | None ->return (Printf.sprintf "None -> %s%!" string)
               | Some elt ->
-                Store.read_free (store "from_bottom 3") elt >>= fun elt ->
+                Store.read_free store elt >>= fun elt ->
                 return (Printf.sprintf "Some %s -> %s%!" (C.to_string elt) string)
             )
         )
     in
 
-    Store.read_free (store "from_bottom 4") q.index.C.top >>= fun top ->
+    Store.read_free store q.index.C.top >>= fun top ->
     match top with
     | C.Index _
     | C.Elt _ -> assert false
     | C.Node top ->
       from_top q top >>= fun string_top ->
-      Store.read_free (store "from_bottom 5") q.index.C.bottom >>= fun bottom ->
+      Store.read_free store q.index.C.bottom >>= fun bottom ->
       match bottom with
       | C.Index _
       | C.Elt _ -> assert false
@@ -703,7 +703,7 @@ module Make
     let rec iter tmp_list res_list = match tmp_list with
       | [] -> return res_list
       | key :: tmp_list ->
-        Store.read_exn (store "iter") key >>= fun value ->
+        Store.read_exn store key >>= fun value ->
         match value with
         | C.Elt _       -> fail (Error `Invalid_access)
         | C.Index index -> iter

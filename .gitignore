@@ -4,3 +4,7 @@ _build
 *.swp
 *.log
 *.native
+*.docdir
+
+setup.data
+setup.log

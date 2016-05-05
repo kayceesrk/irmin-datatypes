@@ -105,7 +105,7 @@ module Make
     include S
 
     let create () =
-      create Config.conf Config.task
+      create Config.conf
 
     let read t k =
       incr_read ();
@@ -141,15 +141,15 @@ module Make
 
     let diff {root = r1; _} {root = r2; _} =
       Store.create () >>= fun store ->
-      Store.read_exn (store "read_exn for diff") r1 >>= fun s1 ->
-      Store.read_exn (store "read_exn for diff") r2 >>= fun s2 ->
+      Store.read_exn store  r1 >>= fun s1 ->
+      Store.read_exn store  r2 >>= fun s2 ->
       C.diff s1 s2
 
     let patch d {root; _} =
       Store.create () >>= fun store ->
-      Store.read_exn (store "read_exn for patch") root >>= fun s ->
+      Store.read_exn store  root >>= fun s ->
       C.patch d s >>= fun res_set ->
-      Store.add (store "add for patch") res_set >>= fun new_root ->
+      Store.add store res_set >>= fun new_root ->
       return {root = new_root; card = SetV.cardinal res_set}
   end
 
@@ -163,33 +163,33 @@ module Make
   let dump { card; root } =
     if card == 0 then return []
     else Store.create () >>= fun store ->
-         Store.read_exn (store "read_exn for dump") root >>= fun set ->
+         Store.read_exn store  root >>= fun set ->
          return @@ SetV.elements set
 
   let create () =
     Store.create () >>= fun store ->
-    Store.add (store "add for create") (SetV.empty) >>= fun root ->
+    Store.add store  (SetV.empty) >>= fun root ->
     return {card = 0; root}
 
   let add {root; _} elt =
     Store.create () >>= fun store ->
-    Store.read_exn (store "read_exn for add") root >>= fun set_val ->
+    Store.read_exn store  root >>= fun set_val ->
     let new_set = SetV.add elt set_val in
     let card = SetV.cardinal new_set in
-    Store.add (store "add for add") new_set >>= fun new_root ->
+    Store.add store  new_set >>= fun new_root ->
     return @@ {root = new_root; card}
 
   let remove {root; _} elt =
     Store.create () >>= fun store ->
-    Store.read_exn (store "read_exn for remove") root >>= fun set_val ->
+    Store.read_exn store  root >>= fun set_val ->
     let new_set = SetV.remove elt set_val in
     let card = SetV.cardinal new_set in
-    Store.add (store "add for remove") new_set >>= fun new_root ->
+    Store.add store  new_set >>= fun new_root ->
     return @@ {root = new_root; card}
 
   let mem {root; _} elt =
     Store.create () >>= fun store ->
-    Store.read_exn (store "read_exn for mem") root >>= fun set_val ->
+    Store.read_exn store  root >>= fun set_val ->
     return @@ SetV.mem elt set_val
 
   let stats () =
