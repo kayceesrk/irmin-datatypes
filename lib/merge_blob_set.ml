@@ -29,8 +29,6 @@ let list_dedup ?(compare=Pervasives.compare) t =
   in
   aux [] t
 
-module Log = Log.Make(struct let section = "QUEUE" end)
-
 exception Empty
 
 type stats = {

@@ -30,8 +30,6 @@ let list_dedup ?(compare=Pervasives.compare) t =
   in
   aux [] t
 
-module Log = Log.Make(struct let section = "QUEUE" end)
-
 exception Empty
 
 type error = [ `Corrupted | `Invalid_access ]
@@ -134,7 +132,7 @@ module Make
       | Index of Index.t
       | Node  of Node.t
       | Elt   of V.t
-    with compare
+    [@@deriving compare]
 
     let equal_node n1 n2 =
       Node.compare n1 n2 = 0

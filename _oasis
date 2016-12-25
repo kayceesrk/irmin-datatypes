@@ -16,7 +16,7 @@ Library "irmin-datatypes"
   Findlibname:      irmin_datatypes
   InternalModules:  Lww_register, Merge_queue, Builder, Merge_blob_set
   Modules:          Irmin_datatypes
-  BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core, comparelib.syntax
+  BuildDepends:     lwt, irmin, tc, ezjsonm, bin_prot, core, ppx_jane
   ByteOpt:          -thread
   NativeOpt:        -thread
 

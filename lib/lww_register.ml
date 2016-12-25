@@ -21,8 +21,6 @@ open Core
 open Core.Std
 open Irmin.Merge.OP
 
-module Log = Log.Make(struct let section = "LWW_REGISTER" end)
-
 type stats = {
   ops: int;
   reads: int;
